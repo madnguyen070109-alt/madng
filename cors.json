@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://syncstep-247ce.firebaseapp.com", "https://syncstep-247ce.web.app"],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type"]
+  }
+]

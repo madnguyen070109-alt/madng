@@ -1,0 +1,40 @@
+:root {
+  --cream: #E7E5DF;
+  --ink: #071013;
+  --coral-active: #E24E64;
+  --coral-hover: #C93A50;
+  --warm-white: #F4F4F2;
+  --mint: #3FAE8A;
+  --border-gray: #B0B0AF;
+  --rect-gray: #E9E9E6;
+}
+h2, h4 {
+    color: var(--ink);
+}
+p {
+    color: var(--ink);
+}
+.button {
+    background-color: var(--coral-active);
+    border: none;
+    color: var(--warm-white);
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.introRect{
+    width: 90%;
+    margin-top: 30px;
+    margin-left: 5%;
+    padding-left: 1%;
+    height: 150px;
+    background-color: var(--rect-gray);
+    border-radius: 10px;
+    border: 3px solid var(--border-gray);
+}

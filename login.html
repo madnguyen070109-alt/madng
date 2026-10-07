@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SyncStep</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- link the webpage's stylesheet -->
+    <link rel="stylesheet" href="/login.css" />
+    <link rel="stylesheet" href="/general-style.css" />
+
+    <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
+    <script type="module" src="/firebase-init.js"></script>
+
+    <!-- type="module" so MediaPipe's and Firebase's import syntax works -->
+    <script type="module" src="/script.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <h2 class="gradient-text">SyncStep</h2>
+    </header>
+    <div class="login-box">
+      <form class="login-form" id="login-form">
+        <h2>Login</h2>
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <br>
+          <input type="email" id="email" name="email" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <br>
+          <input type="password" id="password" name="password" autocomplete="current-password" required>
+        </div>
+        <p id="auth-error" class="auth-error" role="alert"></p>
+        <button type="submit">Login</button>
+      </form>
+      <button type="button" id="google-signup-button">Login with Google</button>
+      <h5>Don't have an account? <a href="signup.html">Sign up</a></h5>
+    </div>
+  </body>
+</html>

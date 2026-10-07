@@ -1,0 +1,115 @@
+:root {
+  --cream: #E7E5DF;
+  --ink: #071013;
+  --coral-active: #E24E64;
+  --coral-hover: #C93A50;
+  --warm-white: #F4F4F2;
+  --mint: #3FAE8A;
+  --border-gray: #B0B0AF;
+  --rect-gray: #E9E9E6;
+}
+
+h3 { 
+  color: var(--ink); 
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+/* Card Container */
+.update-card { 
+  height: auto; 
+  background-color: var(--warm-white); 
+  border: 3px solid var(--border-gray); 
+  border-radius: 10px; 
+  padding: 10px; 
+  margin-left: 5%; 
+  margin-top: 10px; 
+  width: 90%; 
+  box-sizing: border-box; /* Prevents border from adding to width */
+}
+
+/* The Main 3-Column Grid */
+.update-form {
+  display: grid;
+  /* 3 columns of different sizes: flexible caption, auto-sized photo, fixed action col */
+  grid-template-columns: 1fr auto 150px;
+  gap: 15px;
+  align-items: start; /* Aligns all top edges perfectly */
+}
+
+/* 1. Reset default margins on the text field to match the label */
+.input-caption { 
+  height: 120px; 
+  width: 100%; 
+  padding-left: 10px; 
+  border: 1px solid var(--border-gray);
+  border-radius: 4px;
+  box-sizing: border-box; 
+  margin: 0; /* ADD THIS to remove native browser offsets */
+}
+
+/* 2. Explicitly tell the parent grid items to line up by their top edge */
+.update-form {
+  display: grid;
+  grid-template-columns: 1fr auto 150px;
+  gap: 15px;
+  align-items: start; /* CHANGE back to start so elements align from the true top */
+}
+
+/* 3. Keep your photo button layout clean */
+.btn-photo { 
+  border: 1px solid var(--border-gray); 
+  width: 120px; 
+  height: 120px; 
+  box-sizing: border-box;
+  background-color: var(--cream);
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0; /* Ensure no accidental margin here either */
+
+  display: inline-flex; 
+  align-items: center;
+  justify-content: center;
+}
+
+
+
+/* Column 3: Action Nested Column Container (Two Objects) */
+/* Column 3: Container */
+.action-column { 
+  display: grid;
+  grid-template-rows: 1fr 1fr; /* Split the 120px space into two equal halves */
+  gap: 8px; /* Space between elements */
+  width: 100%;
+  height: 120px; /* Match the height of the input and photo blocks */
+  box-sizing: border-box;
+}
+
+/* Top Object: Dropdown */
+.dropdown-song { 
+  color: var(--coral-active); 
+  width: 100%;
+  height: 100%; /* Fills its half of the container */
+  padding: 0 10px; /* Removed vertical padding so height governs layout */
+  border: 1px solid var(--border-gray);
+  border-radius: 4px;
+  background-color: #fff;
+  box-sizing: border-box;
+}
+
+/* Bottom Object: Post Button */
+.button {
+  width: 100%;
+  height: 95%; /* Fills its half of the container */
+  padding: 0; /* Removed vertical padding so height governs layout */
+  background-color: var(--coral-active); /* Matched your active color theme */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

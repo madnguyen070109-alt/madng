@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    
+    <title>SyncStep</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+	<!-- link the webpage's stylesheet -->
+	<link rel="stylesheet" href="/community.css" />
+    <link rel="stylesheet" href="/general-style.css" />
+
+	<!-- link the webpage's JavaScript file -->
+
+	  <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
+	  <script type="module" src="/firebase-init.js"></script>
+
+	  <!-- link the webpage's JavaScript file (type="module" so MediaPipe's import syntax works) -->
+	  <script type="module" src="/script.js" defer></script>
+
+  </head>
+    <body>
+        <header class="top-bar">
+            <a href="index.html">
+          <img src="assets/Firefly (1).png" alt="SyncStep Logo" class="logo">
+        </a>
+        <div class="navRect">    
+          <div class="navigation">
+            <a href="index.html">
+              <img src="assets/home.png" alt="Home" class="home">
+            </a>
+                    <a href="practice.html">Practice</a>
+                    <a href="library.html">Library</a>
+                    <a class="active" href="community.html">Community</a>
+                    <a href="bookmarks.html">Bookmarks</a>
+                    <a href="profile.html">Profile</a>
+                    <a class="login-button" href="login.html">Login</a>
+                </div>
+			</div>
+		</header>
+    <hr>
+    <div class="update-card">
+    <!-- Title of the card -->
+      <h3 class="card-title">Share a practice update</h3>
+  
+    <!-- Form Container -->
+      <form class="update-form">
+        <input type="text" class="input-caption" placeholder="Caption...">
+
+        <label class="btn-photo">
+          <input type="file" accept="image/*" hidden>
+          <span>+ Photo</span>
+        </label>
+
+        <div class="action-column">
+          <select class="dropdown-song" id="songs-list">
+            <option value="">Search or select a song...</option>
+          </select>
+          <button type="submit" class="button">Post</button>
+        </div>
+      </form>
+    </div>
+	</body>
+</html>

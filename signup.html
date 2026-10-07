@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SyncStep</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- link the webpage's stylesheet (login.css holds the shared auth-box styles) -->
+    <link rel="stylesheet" href="/login.css" />
+    <link rel="stylesheet" href="/general-style.css" />
+
+    <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
+    <script type="module" src="/firebase-init.js"></script>
+
+    <!-- type="module" so MediaPipe's and Firebase's import syntax works -->
+    <script type="module" src="/script.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <h2 class="gradient-text">SyncStep</h2>
+    </header>
+    <div class="login-box">
+      <!-- novalidate: step 2 fields start hidden, so the browser's built-in
+           "required" check would block submit; script.js validates instead -->
+      <form class="login-form" id="signup-form" novalidate>
+        <h2>Sign Up</h2>
+        <div id="fname-group" class="form-group">
+          <label for="fname">First Name:</label><br>
+          <input type="text" id="fname" name="fname" autocomplete="given-name" required>
+        </div>
+        <div id="lname-group" class="form-group">
+          <label for="lname">Last Name:</label><br>
+          <input type="text" id="lname" name="lname" autocomplete="family-name" required>
+        </div>
+        <div id="email-group" class="hidden">
+          <label for="email">Email:</label><br>
+          <input type="email" id="email" name="email" autocomplete="email" required>
+        </div>
+        <div id="password-group" class="hidden">
+          <label for="password">Password:</label><br>
+          <input type="password" id="password" name="password" autocomplete="new-password" required>
+        </div>
+        <div id="confirm-password-group" class="hidden">
+          <label for="confirm-password">Confirm Password:</label><br>
+          <input type="password" id="confirm-password" name="confirm-password" autocomplete="new-password" required>
+        </div>
+        <p id="auth-error" class="auth-error" role="alert"></p>
+        <button id="next" type="button">Next</button>
+        <button class="hidden" id="sign-up" type="submit">Sign Up</button>
+      </form>
+      <button type="button" id="google-signup-button">Sign up with Google</button>
+      <h5>Already have an account? <a href="login.html">Login</a></h5>
+    </div>
+  </body>
+</html>

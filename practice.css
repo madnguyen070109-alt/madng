@@ -1,0 +1,173 @@
+:root {
+  --cream: #E7E5DF;
+  --ink: #071013;
+  --coral-active: #E24E64;
+  --coral-hover: #C93A50;
+  --warm-white: #F4F4F2;
+  --mint: #3FAE8A;
+  --border-gray: #B0B0AF;
+  --rect-gray: #E9E9E6;
+}
+.practice-stage {
+    display: flex;
+    gap: 24px;
+    padding: 20px;
+}
+
+.video-column {
+    flex: 0 0 60vw;
+    max-width: 60vw;
+}
+.webcam-column {
+    flex: 1 1 auto; /* takes up the remaining ~25% */
+    display: flex;
+    flex-direction: column; 
+}
+
+/* Shared positioning context so the overlay canvas can sit exactly on
+   top of the YouTube iframe / webcam video underneath it. */
+.video-wrap,
+.webcam-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: var(--warm-white); /* Warm White, per Section 26 */
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0; /* keeps its aspect-ratio size, doesn't get squeezed */
+}
+
+#yt-player,
+#webcam-feed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#webcam-feed {
+    object-fit: cover;
+   
+}
+#webcam-feed, #live-overlay {
+    transform: scaleX(-1);
+}
+#reference-overlay,
+#live-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* clicks pass through to the video/webcam below */
+}
+
+/* Mirrored state - flips the reference video and its overlay together as
+   one unit, so joint coordinates never need to be individually flipped in
+   the drawing logic. (The webcam is already selfie-mirrored above.) */
+.video-wrap.mirrored {
+    transform: scaleX(-1);
+}
+
+.camera-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Used to fully swap the Start/Stop camera buttons rather than just
+   graying one out — see script.js startCamera()/stopCamera(). */
+.hidden {
+    display: none;
+}
+
+.control-row {
+    display: flex;
+    gap: 12px;
+    padding: 0 20px 20px;
+}
+
+h4 {
+    color: var(--ink);
+    margin: 10px 0;
+}
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 40px;
+  padding: 20px;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.control-button, select{
+    background-color: var(--coral-active);
+    border: none;
+    color: white;
+    width: 100px;
+    height: 25px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 11px;
+    margin: 4px 2px;
+    border-radius: 30px;
+    cursor: pointer;
+}
+.control-button:hover {
+    background-color: var(--coral-hover);
+}
+#start-camera-btn, #stop-camera-btn, #record{
+    width:45%;
+    margin: 2%;
+    flex-shrink: 0; /* buttons keep their natural height, don't get squeezed */
+}
+p {
+    color: var(--ink);
+}
+.camera-buttons-row {
+    display: flex;
+    gap: 0; /* the buttons already carry their own margin below */
+    flex-shrink: 0;
+}
+/* Fills whatever vertical space is left in .webcam-column after
+   webcam-wrap + the button row, so its bottom lines up with the
+   bottom of the YouTube video — pure flexbox, no JS needed. */
+.score-rect {
+    width: 100%;
+    background-color: var(--rect-gray);
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0; /* overrides browser's default min-height:auto on flex items, which was blocking growth */
+    display: flex;
+
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid var(--border-gray);
+}
+.score-rect p {
+    margin: 0;
+}
+
+/* ---- Added: active state + loop pill sizing ------------------------ */
+/* Pills and toggles had no visible "selected" state, and loop labels like
+   "Chorus 1" overflowed the fixed 55px oval width. */
+.oval-button.active,
+.control-button.active {
+    background-color: var(--coral-hover);
+    box-shadow: 0 0 0 2px var(--ink);
+}
+.loop-pill {
+    width: auto;
+    min-width: 55px;
+    padding: 0 12px;
+}

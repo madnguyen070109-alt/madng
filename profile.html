@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    
+    <title>SyncStep</title>
+    <meta charset="utf-8" />
+	  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+	  <!-- link the webpage's stylesheet -->
+	  <link rel="stylesheet" href="/profile.css" />
+    <link rel="stylesheet" href="/general-style.css" />
+
+	  <!-- link the webpage's JavaScript file -->
+
+	  <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
+	  <script type="module" src="/firebase-init.js"></script>
+
+	  <!-- link the webpage's JavaScript file (type="module" so MediaPipe's import syntax works) -->
+	  <script type="module" src="/script.js" defer></script>
+
+  </head>
+  <body>
+    <header class="top-bar">
+      <a href="index.html">
+          <img src="assets/Firefly (1).png" alt="SyncStep Logo" class="logo">
+        </a>
+        <div class="navRect">    
+          <div class="navigation">
+            <a href="index.html">
+              <img src="assets/home.png" alt="Home" class="home">
+            </a>
+          <a href="practice.html">Practice</a>
+          <a href="library.html">Library</a>
+          <a href="community.html">Community</a>
+          <a href="bookmarks.html">Bookmarks</a>
+          <a class="active" href="profile.html">Profile</a>  
+          <a class="login-button" href="login.html">Login</a>
+          <a class="signup-button" href="signup.html">Sign Up</a>          
+        </div>
+      </div>
+		</header>
+    <hr>
+    <div id="profile-info" class="profile-card hidden">
+      <h2 id="profile-name"></h2>
+      <p id="profile-email"></p>
+      <button id="logout-button" class="button">Log Out</button>
+    </div>
+    <div id="profile-logged-out" class="hidden">
+      <p>You're not logged in.</p>
+      <a href="login.html" class="button">Login</a>
+    </div>
+	</body>
+</html>
