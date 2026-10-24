@@ -67,3 +67,30 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# --- SyncStep additions ---
+
+# Reference skeleton data (uploaded to Firebase Storage instead)
+*_keypoints*.json
+
+# Python helper scripts / environments
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Firebase secrets and local config
+.firebaserc
+serviceAccountKey*.json
+*-firebase-adminsdk-*.json
+
+# Local video/media used for testing
+*.mp4
+*.mov
+*.webm
+
+# Editor and OS clutter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
