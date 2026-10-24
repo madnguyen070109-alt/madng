@@ -52,6 +52,7 @@ const videoWrap = document.getElementById('video-wrap');
 // viewport size.
 function sizeScoreRectToVideo() {
   if (!scoreRect || !videoWrap) return;
+  if (window.innerWidth <= 900) { scoreRect.style.height = ''; return; } // stacked layout
 
   const webcamWrap = document.getElementById('webcam-wrap');
   const recordBtn = document.getElementById('record');
@@ -99,7 +100,8 @@ window.__syncstep = {
   getPlayer: () => ytPlayer,
   getKeyframe: (t) => findClosestKeyframe(t),
   getDance: () => currentDanceData,
-  getMember: () => currentMember
+  getMember: () => currentMember,
+  getLoop: () => activeLoop
 };
 
 // YouTube's script calls this automatically once its API has loaded —
@@ -148,6 +150,7 @@ async function loadDanceAndCreatePlayer() {
   const danceSnap = await getDoc(doc(db, 'dances', danceId));
   if (!danceSnap.exists()) {
     console.error(`No dance found for ID "${danceId}".`);
+    location.replace('library.html');
     return;
   }
 
@@ -191,40 +194,69 @@ function onPlayerReady() {
   loadSkeletonData(currentMember); // fetch this member's skeleton JSON, ready for the sync loop
 }
 
-function onPlayerStateChange(event) {
-  // Only poll/redraw while actually playing — no point burning cycles
-  // redrawing the overlay every 100ms while paused.
-  if (event.data === YT.PlayerState.PLAYING) {
-    startSyncLoop(() => ytPlayer.getCurrentTime());
-  } else {
-    stopSyncLoop();
-  }
+function onPlayerStateChange() {
+  // Keep the loop alive in every state so the ghost outline also draws
+  // while paused or scrubbing (it's a cheap 100ms poll). Idempotent.
+  startSyncLoop(() => ytPlayer.getCurrentTime());
 }
 
 // Matches the overlay canvas's pixel size to the YouTube iframe underneath
 // it so drawn joint coordinates line up with the video.
 function sizeOverlayToPlayer() {
-  const iframe = document.querySelector('#yt-player iframe');
-  if (!iframe || !referenceCanvas) return;
-  referenceCanvas.width = iframe.clientWidth;
-  referenceCanvas.height = iframe.clientHeight;
+  if (referenceCanvas && videoWrap && videoWrap.clientWidth) {
+    referenceCanvas.width = videoWrap.clientWidth;
+    referenceCanvas.height = videoWrap.clientHeight;
+  }
+  const webcamWrapEl = document.getElementById('webcam-wrap');
+  if (liveCanvas && webcamWrapEl && webcamWrapEl.clientWidth) {
+    liveCanvas.width = webcamWrapEl.clientWidth;
+    liveCanvas.height = webcamWrapEl.clientHeight;
+  }
+}
+// Re-size whenever the layout changes (window resize, view switch, rotation)
+if ('ResizeObserver' in window) {
+  const ro = new ResizeObserver(() => { sizeOverlayToPlayer(); sizeScoreRectToVideo(); });
+  if (videoWrap) ro.observe(videoWrap);
+  const ww = document.getElementById('webcam-wrap');
+  if (ww) ro.observe(ww);
 }
 
 // ============================================================
 // REFERENCE SKELETON DATA + SYNC LOOP
 // ============================================================
 
+function setSkeletonStatus(msg, bad = false) {
+  const el = document.getElementById('skeleton-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('bad', bad);
+}
+
 async function loadSkeletonData(member) {
-  // skeletonUrl is the Storage download URL saved on the member entry by
-  // admin.html when the dance was added.
   const skeletonUrl = member?.skeletonUrl;
   if (!skeletonUrl) {
-    console.warn('This member has no skeletonUrl — sync loop will run with no data.');
+    setSkeletonStatus('Ghost outline unavailable: this member has no skeleton file in the library.', true);
     return;
   }
+  try {
+    const res = await fetch(skeletonUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let data = await res.json();
+    if (!Array.isArray(data)) data = data.frames || data.keyframes || data.skeleton || [];
+    if (!data.length) throw new Error('file has no frames');
 
-  const res = await fetch(skeletonUrl);
-  skeletonData = await res.json(); // expected shape: array of { t, joints: [...] }
+    // If timestamps look like milliseconds, convert to seconds
+    const duration = ytPlayer?.getDuration?.() || 0;
+    const lastT = data[data.length - 1].t;
+    if (duration && lastT > duration * 20) data = data.map(f => ({ ...f, t: f.t / 1000 }));
+
+    data.sort((a, b) => a.t - b.t);
+    skeletonData = data;
+    setSkeletonStatus('');
+  } catch (err) {
+    console.error('Skeleton load failed:', err);
+    setSkeletonStatus('Ghost outline failed to load (' + err.message + '). If this says "Failed to fetch", the Storage CORS settings still need to be applied.', true);
+  }
 }
 
 // Polls playback time every 100ms, finds the closest matching keyframe
@@ -238,7 +270,7 @@ function startSyncLoop(getCurrentTimeFn) {
     // Loop enforcement: once playback reaches the active section's end,
     // jump back to its start. Runs for as long as a loop pill (other
     // than "Off") is selected -- see populateLoopPills() below.
-    if (activeLoop && currentTime >= activeLoop.end) {
+    if (activeLoop && ytPlayer.getPlayerState?.() === YT.PlayerState.PLAYING && currentTime >= activeLoop.end) {
       ytPlayer.seekTo(activeLoop.start, true);
       return; // skip drawing this tick -- next poll picks up post-seek
     }
@@ -593,6 +625,7 @@ if (viewSelect) {
     const webcamColumn = document.querySelector('.webcam-column');
     if (!videoColumn || !webcamColumn) return;
 
+    document.body.dataset.view = viewSelect.value;
     videoColumn.classList.remove('hidden');
     webcamColumn.classList.remove('hidden');
     if (viewSelect.value === 'reference-only') {

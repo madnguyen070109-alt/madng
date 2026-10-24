@@ -85,3 +85,37 @@ body:not(:has(.login-box)) { background-color: var(--cream); }
 .admin-status { margin: 12px 20px; color: var(--ink); }
 .admin-status.ok { color: var(--mint); font-weight: 600; }
 .admin-status.bad { color: var(--coral-hover); font-weight: 600; }
+
+/* ---------- practice: view modes ---------- */
+/* Webcam Only: no reference-video controls. Reference Only: no webcam controls. */
+body[data-view="webcam-only"] .ref-control,
+body[data-view="webcam-only"] .side-control,
+body[data-view="reference-only"] .side-control { display: none !important; }
+body[data-view="webcam-only"] .webcam-column { max-width: 900px; margin: 0 auto; }
+body[data-view="reference-only"] .video-column { max-width: 1000px; margin: 0 auto; }
+
+.skeleton-status { font-size: 13px; margin: 6px 0 0; color: var(--ink); }
+.skeleton-status.bad { color: var(--coral-hover); }
+.skeleton-status:empty { display: none; }
+
+/* ---------- practice: responsive layout ---------- */
+.practice-stage { max-width: 1500px; margin: 0 auto; box-sizing: border-box; }
+.video-column { flex: 1 1 60%; max-width: 60%; min-width: 0; }
+.webcam-column { flex: 1 1 40%; min-width: 0; }
+.control-grid, .control-row-extra { max-width: 1500px; margin: 0 auto; padding-left: 20px; padding-right: 20px; box-sizing: border-box; }
+.control-row-extra { flex-wrap: wrap; }
+.camera-buttons-row { flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .practice-stage { flex-direction: column; padding: 12px; }
+  .video-column, .webcam-column { flex: 1 1 auto; max-width: 100%; width: 100%; }
+  body[data-view="webcam-only"] .webcam-column, body[data-view="reference-only"] .video-column { max-width: 100%; }
+  .score-rect { min-height: 120px; }
+  .control-grid { grid-template-columns: 1fr; gap: 12px; padding-top: 0; padding-bottom: 12px; }
+  #score-value { font-size: 36px; min-width: 90px; }
+}
+
+/* ---------- record countdown ---------- */
+.countdown { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(7,16,19,.55); color: #fff; }
+.countdown .count-num { font-size: clamp(110px, 22vw, 220px); font-weight: 800; line-height: 1; text-shadow: 0 4px 30px rgba(0,0,0,.4); }
+.countdown .count-label { font-size: 18px; letter-spacing: .06em; }

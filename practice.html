@@ -20,7 +20,7 @@
 	  <script type="module" src="/script.js" defer></script>
 
     </head>
-    <body>
+    <body data-view="side-by-side">
         <header class="top-bar">
             <a href="index.html">
                 <img src="assets/Firefly (1).png" alt="SyncStep Logo" class="logo">
@@ -47,6 +47,7 @@
                     <div id="yt-player"></div>
                     <canvas id="reference-overlay"></canvas>
                 </div>
+                <p id="skeleton-status" class="skeleton-status"></p>
             </div>
 
                 <!-- Right: user's webcam with live MediaPipe skeleton overlay -->
@@ -58,9 +59,9 @@
                 <div class="camera-buttons-row">
                     <button id="start-camera-btn" class="button">Start Camera</button>
                     <button id="stop-camera-btn" class="hidden">Stop Camera</button>
-                    <button id="record" class="button">Record Session</button>
+                    <button id="record" class="button side-control">Record Session</button>
                 </div>
-                <div class="score-rect">
+                <div class="score-rect side-control">
                     <div class="score-body">
                         <p class="score-label">SCORE</p>
                         <div id="score-value">--</div>
@@ -72,7 +73,7 @@
 
         <!-- Persistent control row: speed / loop / mirror / phantom / view -->
         <div class="control-grid">
-            <div class="control-item">
+            <div class="control-item ref-control">
                 <h4>Playback Speed</h4>
                 <div>
                     <button type="button" class="oval-button speed-btn" data-speed="0.25">0.25x</button>
@@ -81,7 +82,7 @@
                     <button type="button" class="oval-button speed-btn active" data-speed="1">1x</button>
                 </div>
             </div>
-            <div class="control-item">
+            <div class="control-item ref-control">
                 <h4>Loop</h4>
                 <div id="loop-pills">
                     <button type="button" class="oval-button loop-pill active" data-loop-off>Off</button>
@@ -90,7 +91,7 @@
         </div>
         <div class="control-row-extra">
             <button type="button" id="mirror-btn" class="control-button">Mirror</button>
-            <button type="button" id="phantom-btn" class="control-button">Phantom Overlay</button>
+            <button type="button" id="phantom-btn" class="control-button side-control">Phantom Overlay</button>
             <select name="view" id="view">
                 <option value="side-by-side">Side by Side</option>
                 <option value="reference-only">Reference Only</option>

@@ -602,7 +602,15 @@ if (adminForm) {
 // far you stand from the camera, your height, or where you stand in frame.
 // Left/right are NOT swapped — this matches the Phantom Overlay, which
 // draws both skeletons through the same mirrored canvas.
-if ($("score-value")) initScoring();
+if ($("score-value")) {
+  const q = new URLSearchParams(location.search);
+  if (!q.get("dance") || !q.get("video")) {
+    // Practice only makes sense for a chosen dance — send people to pick one
+    location.replace("library.html");
+  } else {
+    initScoring();
+  }
+}
 
 function initScoring() {
   const AR = 16 / 9;                       // both video boxes are 16:9
@@ -717,14 +725,48 @@ function initScoring() {
     sum = 0; count = 0;
   }
 
-  recordBtn?.addEventListener("click", () => {
-    if (recording) return finishRecording();
+  // 3-2-1 overlay across both the video and the webcam
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  let counting = false;
+  const overlay = document.createElement("div");
+  overlay.className = "countdown hidden";
+  overlay.innerHTML = '<div class="count-num"></div><div class="count-label">Get ready…</div>';
+  document.body.appendChild(overlay);
+
+  async function startRecording() {
+    const api = window.__syncstep;
+    const player = api?.getPlayer?.();
+    if (!player?.seekTo) { detailEl.textContent = "The video is still loading — try again in a moment."; return; }
     if (!cameraOn()) { detailEl.textContent = "Start your camera first."; return; }
-    recording = true; sum = 0; count = 0; recStart = Date.now();
+
+    // Start from the active loop's start, otherwise the top of the video
+    const startAt = api.getLoop?.()?.start ?? 0;
+    counting = true;
+    recordBtn.disabled = true;
+    player.pauseVideo();
+    player.seekTo(startAt, true);
+
+    overlay.classList.remove("hidden");
+    for (let n = 3; n > 0; n--) {
+      overlay.querySelector(".count-num").textContent = n;
+      await sleep(1000);
+    }
+    overlay.classList.add("hidden");
+
+    player.seekTo(startAt, true);
+    player.playVideo();
+    recording = true; sum = 0; count = 0; recStart = Date.now(); smooth = null;
+    recordBtn.disabled = false;
     recordBtn.textContent = "Stop Recording";
     recordBtn.classList.add("recording");
-    paint(true);
-    detailEl.textContent = "Recording · press play on the video";
+    detailEl.textContent = "Recording…";
+    counting = false;
+  }
+
+  recordBtn?.addEventListener("click", () => {
+    if (counting) return;
+    if (recording) return finishRecording();
+    startRecording();
   });
 
   $("stop-camera-btn")?.addEventListener("click", () => finishRecording(""));
