@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["https://syncstep-247ce.firebaseapp.com", "https://syncstep-247ce.web.app"],
+    "origin": ["https://syncstep-247ce.firebaseapp.com", "https://syncstep-247ce.web.app", "http://localhost:3000", "http://localhost:5000", "http://127.0.0.1:5500"],
     "method": ["GET"],
     "maxAgeSeconds": 3600,
     "responseHeader": ["Content-Type"]

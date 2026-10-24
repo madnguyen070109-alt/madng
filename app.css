@@ -1,0 +1,87 @@
+/* SyncStep — styles for features added in app.js (auto-injected, no HTML link needed) */
+:root {
+  --cream: #E7E5DF; --ink: #071013; --coral-active: #E24E64; --coral-hover: #C93A50;
+  --warm-white: #F4F4F2; --mint: #3FAE8A; --border-gray: #B0B0AF; --rect-gray: #E9E9E6;
+}
+/* Cream page background on app pages (login/signup keep their own) */
+body:not(:has(.login-box)) { background-color: var(--cream); }
+
+.hidden { display: none !important; }
+.empty-note { color: var(--ink); opacity: .7; padding: 0 20px; }
+.empty-note a { color: var(--coral-active); }
+.good { color: var(--mint) !important; }
+
+/* ---------- auth ---------- */
+.form-error { color: var(--coral-hover); font-size: 14px; margin: 6px 20px; }
+
+/* ---------- bookmark star on dance cards ---------- */
+.dance-card-thumb-wrap { position: relative; }
+.bookmark-btn {
+  position: absolute; top: 8px; right: 6%; width: 34px; height: 34px; padding: 0; margin: 0;
+  border-radius: 50%; border: none; background: rgba(244,244,242,.92); color: var(--ink);
+  font-size: 20px; line-height: 34px; cursor: pointer;
+}
+.bookmark-btn:hover { background: #fff; }
+.bookmark-btn.active { color: var(--coral-active); }
+.dance-member-select { margin: 4px 0 12px; width: 80%; height: 30px; font-size: 13px; border-radius: 6px; }
+
+/* ---------- practice page ---------- */
+.speed-btn:not(.active), .loop-pill:not(.active), .control-button:not(.active) {
+  background-color: var(--warm-white); color: var(--ink); border: 1px solid var(--border-gray);
+}
+.speed-btn.active, .loop-pill.active, .control-button.active { background-color: var(--coral-active); color: #fff; }
+.speed-btn:not(.active):hover, .loop-pill:not(.active):hover, .control-button:not(.active):hover { border-color: var(--coral-active); background-color: var(--warm-white); }
+.loop-pill { width: auto; min-width: 55px; padding: 0 12px; }
+#view { background-color: var(--warm-white); color: var(--ink); border: 1px solid var(--border-gray); width: auto; padding: 0 10px; }
+.control-row-extra { display: flex; gap: 12px; align-items: center; padding: 0 20px 30px; }
+#record.recording { background-color: var(--ink); }
+
+.score-rect { align-items: center; gap: 18px; }
+.score-body { display: flex; align-items: center; gap: 18px; width: 100%; }
+.score-label { font-weight: 700; letter-spacing: .08em; font-size: 13px; }
+#score-value { font-size: 44px; font-weight: 800; line-height: 1; color: var(--coral-active); min-width: 110px; }
+#score-detail { font-size: 14px; }
+#score-detail a { color: var(--coral-active); }
+
+/* ---------- community feed ---------- */
+#feed { width: 90%; margin: 20px 5%; display: grid; gap: 14px; }
+.post-card { background: var(--warm-white); border: 2px solid var(--border-gray); border-radius: 10px; padding: 14px; position: relative; color: var(--ink); }
+.post-head { display: flex; justify-content: space-between; font-size: 14px; }
+.post-head span { opacity: .6; }
+.post-song { display: inline-block; margin: 8px 0 0; font-size: 13px; color: var(--coral-active); font-weight: 600; }
+.post-caption { margin: 8px 0; color: var(--ink); }
+.post-image { max-width: 100%; max-height: 420px; border-radius: 8px; display: block; margin-top: 8px; }
+.post-delete { position: absolute; right: 12px; bottom: 12px; background: none; border: none; color: var(--coral-hover); cursor: pointer; font-size: 13px; }
+#feed-more { display: block; margin: 0 auto 40px; }
+
+/* ---------- profile ---------- */
+.profile-card { width: 90%; margin: 20px 5%; color: var(--ink); }
+.profile-card h2, .profile-card h4 { color: var(--ink); }
+.stat-row { display: flex; gap: 16px; margin: 16px 0; }
+.stat { background: var(--warm-white); border: 2px solid var(--border-gray); border-radius: 10px; padding: 12px 22px; display: flex; flex-direction: column; align-items: center; }
+.stat-num { font-size: 28px; font-weight: 800; color: var(--coral-active); }
+.stat-label { font-size: 12px; color: var(--ink); opacity: .7; }
+.score-bars { display: flex; align-items: flex-end; gap: 8px; height: 110px; background: var(--rect-gray); border: 2px solid var(--border-gray); border-radius: 10px; padding: 10px; }
+.score-bars .bar { flex: 1; background: var(--coral-active); border-radius: 4px 4px 0 0; max-width: 40px; }
+.session-list { list-style: none; padding: 0; margin: 0 0 30px; }
+.session-list li { display: grid; grid-template-columns: 1fr auto 60px; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--border-gray); font-size: 14px; }
+.session-list li strong { text-align: right; }
+
+/* ---------- home ---------- */
+.contRect, .trending { width: 90%; margin: 24px 5% 0; }
+.contRect h4, .trending h4 { margin: 0 0 8px; }
+.continue-list { display: flex; gap: 14px; flex-wrap: wrap; }
+.continue-card { background: var(--warm-white); border: 1px solid var(--border-gray); border-radius: 10px; padding: 12px 16px; text-decoration: none; color: var(--ink); display: flex; flex-direction: column; min-width: 180px; }
+.continue-card:hover { border-color: var(--coral-hover); }
+.continue-card span { font-size: 13px; opacity: .7; }
+.continue-card em { font-style: normal; font-size: 13px; color: var(--mint); font-weight: 600; }
+.home-posts { display: grid; gap: 12px; }
+
+/* ---------- admin ---------- */
+.dance-entry { padding: 0 20px; }
+.dance-entry input[type="text"] { width: 100%; max-width: 420px; padding: 8px; margin-bottom: 8px; border: 1px solid var(--border-gray); border-radius: 4px; box-sizing: border-box; }
+#add-dance-form { padding-bottom: 40px; }
+#add-dance-form > .button, #add-dance-form > h5 { margin-left: 20px; }
+.admin-status { margin: 12px 20px; color: var(--ink); }
+.admin-status.ok { color: var(--mint); font-weight: 600; }
+.admin-status.bad { color: var(--coral-hover); font-weight: 600; }

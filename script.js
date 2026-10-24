@@ -24,17 +24,11 @@ import {
 
 const MEDIAPIPE_VERSION = "0.10.14";
 
+// All non-practice features (auth, bookmarks, community, profile, admin, scoring)
+import "./app.js";
+
 import { db } from "/firebase-init.js";
-import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
-import { auth, provider } from "/firebase-init.js";
-import {
-  signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 // ---- Shared state -------------------------------------------------
 let poseLandmarker;            // MediaPipe Pose Landmarker instance
 let skeletonData = null;       // reference skeleton JSON for the current member
@@ -59,14 +53,6 @@ const videoWrap = document.getElementById('video-wrap');
 function sizeScoreRectToVideo() {
   if (!scoreRect || !videoWrap) return;
 
-  // FIX: when the video column is hidden (Webcam Only view) the video
-  // has no height, which would collapse the score box to 0px. Let the
-  // CSS flex layout size it instead.
-  if (videoWrap.offsetHeight === 0) {
-    scoreRect.style.height = '';
-    return;
-  }
-
   const webcamWrap = document.getElementById('webcam-wrap');
   const recordBtn = document.getElementById('record');
   // Whichever of start/stop is currently visible drives the used-height
@@ -76,6 +62,7 @@ function sizeScoreRectToVideo() {
     : stopCameraBtn;
 
   const videoHeight = videoWrap.getBoundingClientRect().height;
+  if (!videoHeight) { scoreRect.style.height = '160px'; return; } // video column hidden (Webcam Only)
 
   // Subtract the height everything above score-rect in the column already
   // takes up (webcam box + buttons + their margins), so score-rect fills
@@ -99,7 +86,6 @@ function sizeScoreRectToVideo() {
 let ytPlayer;
 let currentMember = null; // matched entry from dance.members, holds skeletonUrl
 let currentDanceData = null; // full dance doc -- needed for loopSections
-let playerRequested = false; // guards against creating the YT player twice
 
 // Practice-controls state (speed/loop/mirror/phantom) -- read by the
 // sync loop and the webcam detection loop below.
@@ -107,24 +93,22 @@ let activeLoop = null;      // { start, end } in seconds, or null when off
 let mirrorEnabled = false;
 let phantomEnabled = false;
 
+// Read-only hooks for app.js (scoring). Function declarations are hoisted,
+// so referencing findClosestKeyframe here is safe.
+window.__syncstep = {
+  getPlayer: () => ytPlayer,
+  getKeyframe: (t) => findClosestKeyframe(t),
+  getDance: () => currentDanceData,
+  getMember: () => currentMember
+};
+
 // YouTube's script calls this automatically once its API has loaded —
 // name/signature are fixed by the API, don't rename it. It can't be
 // declared async itself, so it delegates to an async helper.
 window.onYouTubeIframeAPIReady = function () {
   if (!document.getElementById('yt-player')) return; // not on practice.html
-  if (playerRequested) return;
-  playerRequested = true;
   loadDanceAndCreatePlayer();
 };
-
-// FIX: race condition -- this module loads after the YouTube script
-// (modules are deferred), and the YouTube API can finish loading and fire
-// onYouTubeIframeAPIReady BEFORE the line above ran, in which case it
-// would never be called again and the player would never appear. If the
-// API is already here, start immediately.
-if (window.YT && window.YT.Player) {
-  window.onYouTubeIframeAPIReady();
-}
 
 // Accepts a full YouTube URL (watch?v=, youtu.be/, embed/) or a bare
 // 11-char ID and returns just the ID that YT.Player actually needs.
@@ -239,19 +223,8 @@ async function loadSkeletonData(member) {
     return;
   }
 
-  // FIX: a failed fetch (CORS, bad URL, Storage rules) used to throw an
-  // unhandled promise rejection with no useful message. Now it logs a
-  // clear error and the page keeps working without the overlay.
-  try {
-    const res = await fetch(skeletonUrl);
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    }
-    skeletonData = await res.json(); // expected shape: array of { t, joints: [...] }
-  } catch (err) {
-    console.error('Could not load skeleton data (check Storage CORS/rules and the skeletonUrl):', err);
-    skeletonData = null;
-  }
+  const res = await fetch(skeletonUrl);
+  skeletonData = await res.json(); // expected shape: array of { t, joints: [...] }
 }
 
 // Polls playback time every 100ms, finds the closest matching keyframe
@@ -300,24 +273,15 @@ async function initPoseLandmarker() {
     `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`
   );
 
-  const modelAssetPath =
-    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
-
-  // FIX: GPU delegate fails on some machines/browsers, which left the app
-  // with no pose detection at all. Try GPU first, fall back to CPU.
-  for (const delegate of ["GPU", "CPU"]) {
-    try {
-      poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath, delegate },
-        runningMode: "VIDEO",
-        numPoses: 1
-      });
-      return;
-    } catch (err) {
-      console.warn(`Pose Landmarker failed with ${delegate} delegate:`, err);
-    }
-  }
-  console.error('Could not start the Pose Landmarker with GPU or CPU.');
+  poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numPoses: 1
+  });
 }
 
 // Webcam access requires a user gesture — wired to the "Start Camera" button
@@ -408,6 +372,7 @@ function detectWebcamLoop() {
   if (poseLandmarker) {
     const result = poseLandmarker.detectForVideo(webcamVideoEl, performance.now());
     const landmarks = result.landmarks?.[0] || null;
+    window.dispatchEvent(new CustomEvent('syncstep:pose', { detail: landmarks }));
     // Mint when Phantom Overlay is on, so the live-tracked skeleton
     // reads as visually distinct from the white reference ghost drawn
     // underneath it (Section 26: Mint = positive feedback).
@@ -556,16 +521,8 @@ function populateLoopPills(loopSections) {
   customPill.className = 'oval-button loop-pill';
   customPill.textContent = 'Custom';
   customPill.addEventListener('click', () => {
-    // FIX: pressing Cancel on a prompt returns null; previously that
-    // fell through to the "enter a valid start/end" alert. Cancel now
-    // just backs out quietly.
-    const startInput = window.prompt('Loop start (seconds)?', '0');
-    if (startInput === null) return;
-    const endInput = window.prompt('Loop end (seconds)?', '10');
-    if (endInput === null) return;
-
-    const start = parseFloat(startInput);
-    const end = parseFloat(endInput);
+    const start = parseFloat(window.prompt('Loop start (seconds)?', '0'));
+    const end = parseFloat(window.prompt('Loop end (seconds)?', '10'));
     if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
       alert('Enter a valid start/end (end must be after start).');
       return;
@@ -605,18 +562,15 @@ speedButtons.forEach(btn => {
   });
 });
 
-// Mirror -- flips video-wrap (video + its overlay canvas) as one unit via
+// Mirror -- flips video-wrap and webcam-wrap together as one unit via
 // the .mirrored class already defined in practice.css, so joint
 // coordinates never need to be individually flipped in drawSkeleton().
 const mirrorBtn = document.getElementById('mirror-btn');
 if (mirrorBtn) {
   mirrorBtn.addEventListener('click', () => {
     mirrorEnabled = !mirrorEnabled;
-    // FIX: the webcam is already selfie-mirrored by CSS (#webcam-feed and
-    // #live-overlay use scaleX(-1)), so also flipping webcam-wrap undid
-    // that and left left/right mismatched. Mirror flips the reference only,
-    // so its left/right matches the user's mirrored webcam view.
     videoWrap?.classList.toggle('mirrored', mirrorEnabled);
+    document.getElementById('webcam-wrap')?.classList.toggle('mirrored', mirrorEnabled);
     mirrorBtn.classList.toggle('active', mirrorEnabled);
   });
 }
@@ -645,20 +599,9 @@ if (viewSelect) {
       webcamColumn.classList.add('hidden');
     } else if (viewSelect.value === 'webcam-only') {
       videoColumn.classList.add('hidden');
-      // FIX: this was `player.pauseVideo()`, but no variable named
-      // `player` exists (it's `ytPlayer`), so choosing Webcam Only threw
-      // a ReferenceError. Guarded in case the player isn't ready yet.
-      if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
-        ytPlayer.pauseVideo();
-      }
+      ytPlayer?.pauseVideo();
     }
-
-    // FIX: layout just changed -- re-measure once the browser has
-    // re-flowed so the overlay canvas and score box match the new sizes.
-    requestAnimationFrame(() => {
-      sizeOverlayToPlayer();
-      sizeScoreRectToVideo();
-    });
+    sizeScoreRectToVideo();
   });
 }
 
@@ -667,9 +610,7 @@ if (viewSelect) {
 // ============================================================
 
 window.addEventListener('DOMContentLoaded', () => {
-  // FIX: this used to download the WASM runtime + model on every page
-  // (home, library, login...). Only practice.html has a webcam element.
-  if (webcamVideoEl) initPoseLandmarker(); // MediaPipe: async, self-initializing
+  initPoseLandmarker(); // MediaPipe: async, self-initializing
   // YouTube: no manual call needed — window.onYouTubeIframeAPIReady fires on its own
 
   if (startCameraBtn) {
@@ -730,22 +671,12 @@ function addMemberRow(container, Name = '', youtubeVideoId = '', skeletonUrl = '
 // ============================================================
 // Guarded so this safely no-ops on any page other than library.html.
 
-// library.html uses #library-grid; bookmarks.html uses #bookmarks-grid.
-// Both pages share the same card/search/filter code below -- the bookmarks
-// page just shows only the dances the signed-in user has bookmarked.
-const libraryGrid = document.getElementById('library-grid') || document.getElementById('bookmarks-grid');
-const isBookmarksPage = !!document.getElementById('bookmarks-grid');
+const libraryGrid = document.getElementById('library-grid');
 const filterChipsEl = document.getElementById('filter-chips');
 const librarySearchBar = document.getElementById('search-bar');
 
 let allDances = [];
 let activeArtist = null;
-
-// Bookmark state -- users/{uid}/bookmarks/{danceId}
-let currentUser = null;          // set by onAuthStateChanged at the bottom
-let bookmarkedIds = new Set();   // dance IDs the current user has bookmarked
-let dancesLoaded = false;        // dances collection fetched
-let authChecked = false;         // Firebase Auth has reported signed-in/out
 
 if (libraryGrid) {
   loadLibrary();
@@ -758,7 +689,6 @@ async function loadLibrary() {
   try {
     const snap = await getDocs(collection(db, 'dances'));
     allDances = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    dancesLoaded = true;
     renderFilterChips();
     renderLibraryGrid();
   } catch (err) {
@@ -769,10 +699,7 @@ async function loadLibrary() {
 
 function renderFilterChips() {
   if (!filterChipsEl) return;
-  // On the bookmarks page only offer artists that have a bookmarked dance.
-  const source = isBookmarksPage ? allDances.filter(d => bookmarkedIds.has(d.id)) : allDances;
-  const artists = [...new Set(source.map(d => d.artist))].sort();
-  if (activeArtist && !artists.includes(activeArtist)) activeArtist = null;
+  const artists = [...new Set(allDances.map(d => d.artist))].sort();
 
   filterChipsEl.innerHTML = '';
   filterChipsEl.appendChild(createChip('All', null));
@@ -794,34 +721,18 @@ function createChip(label, artistValue) {
 
 function renderLibraryGrid() {
   if (!libraryGrid) return;
-
-  // Don't flash a misleading empty state before the data has arrived.
-  if (!dancesLoaded || (isBookmarksPage && !authChecked)) {
-    libraryGrid.innerHTML = '<p>Loading...</p>';
-    return;
-  }
-  if (isBookmarksPage && !currentUser) {
-    libraryGrid.innerHTML = '<p>Please <a href="login.html">log in</a> to see your bookmarks.</p>';
-    return;
-  }
-
   const query = (librarySearchBar?.value || '').trim().toLowerCase();
 
   const filtered = allDances.filter(dance => {
-    const matchesBookmark = !isBookmarksPage || bookmarkedIds.has(dance.id);
     const matchesArtist = !activeArtist || dance.artist === activeArtist;
     const matchesSearch = !query || dance.songTitle?.toLowerCase().includes(query);
-    return matchesBookmark && matchesArtist && matchesSearch;
+    return matchesArtist && matchesSearch;
   });
 
-  let emptyMessage = '<p>No dances match your search.</p>';
-  if (isBookmarksPage) {
-    emptyMessage = bookmarkedIds.size === 0
-      ? '<p>No bookmarks yet. Tap the bookmark icon on a dance in the <a href="library.html">Library</a> to save it here.</p>'
-      : '<p>No bookmarks match your search.</p>';
-  }
+  libraryGrid.innerHTML = filtered.length
+    ? ''
+    : '<p>No dances match your search.</p>';
 
-  libraryGrid.innerHTML = filtered.length ? '' : emptyMessage;
   filtered.forEach(dance => libraryGrid.appendChild(createDanceCard(dance)));
 }
 
@@ -831,31 +742,27 @@ function renderLibraryGrid() {
 // loadDanceAndCreatePlayer() re-matches against dance.members using this
 // same raw value, then extracts the bare video ID for YT.Player.
 function createDanceCard(dance) {
+  const esc = (v = '') => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const card = document.createElement('div');
   card.className = 'dance-card';
-  const isBookmarked = bookmarkedIds.has(dance.id);
   card.innerHTML = `
-    <button type="button" class="bookmark-btn${isBookmarked ? ' active' : ''}"
-            aria-label="Bookmark ${dance.songTitle}" aria-pressed="${isBookmarked}">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
-    </button>
-    <img class="dance-card-thumb" src="${dance.thumbnailUrl || ''}" alt="${dance.songTitle}">
+    <div class="dance-card-thumb-wrap">
+      <img class="dance-card-thumb" src="${esc(dance.thumbnailUrl || '')}" alt="${esc(dance.songTitle)}">
+      <button type="button" class="bookmark-btn" data-dance-id="${esc(dance.id)}" aria-label="Bookmark">☆</button>
+    </div>
     <div class="dropdown">
       <div class="dance-card-info">
-        <p class="dance-card-title">${dance.songTitle}</p>
-        <p class="dance-card-artist">${dance.artist}</p>
+        <p class="dance-card-title">${esc(dance.songTitle)}</p>
+        <p class="dance-card-artist">${esc(dance.artist)}</p>
       </div>
       <select class="dance-member-select">
         <option value="">Select a member</option>
         ${dance.members?.map(member => `
-          <option value="${member.youtubeVideoId}">${member.Name}</option>
+          <option value="${esc(member.youtubeVideoId)}">${esc(member.Name)}</option>
         `).join('') || ''}
       </select>
     </div>
   `;
-
-  const bookmarkBtn = card.querySelector('.bookmark-btn');
-  bookmarkBtn.addEventListener('click', () => toggleBookmark(dance.id, bookmarkBtn));
 
   const select = card.querySelector('.dance-member-select');
   select.addEventListener('change', () => {
@@ -864,65 +771,6 @@ function createDanceCard(dance) {
   });
 
   return card;
-}
-
-// ============================================================
-// BOOKMARKS — users/{uid}/bookmarks/{danceId}
-// ============================================================
-// One doc per bookmarked dance, keyed by the dance's ID, so toggling is
-// just set/delete on a known path.
-
-function setBookmarkButtonState(btn, active) {
-  btn.classList.toggle('active', active);
-  btn.setAttribute('aria-pressed', String(active));
-}
-
-async function toggleBookmark(danceId, btn) {
-  if (!currentUser) {
-    window.location.href = 'login.html'; // bookmarks need an account
-    return;
-  }
-
-  const ref = doc(db, 'users', currentUser.uid, 'bookmarks', danceId);
-  const wasBookmarked = bookmarkedIds.has(danceId);
-
-  // Optimistic update so the icon responds instantly; reverted on failure.
-  if (wasBookmarked) bookmarkedIds.delete(danceId); else bookmarkedIds.add(danceId);
-  setBookmarkButtonState(btn, !wasBookmarked);
-
-  try {
-    if (wasBookmarked) {
-      await deleteDoc(ref);
-    } else {
-      await setDoc(ref, { danceId, createdAt: serverTimestamp() });
-    }
-  } catch (err) {
-    console.error('Could not update bookmark:', err);
-    if (wasBookmarked) bookmarkedIds.add(danceId); else bookmarkedIds.delete(danceId);
-    setBookmarkButtonState(btn, wasBookmarked);
-    alert("Couldn't update your bookmark. Please try again.");
-    return;
-  }
-
-  // On the bookmarks page an un-bookmarked dance should disappear.
-  if (isBookmarksPage) {
-    renderFilterChips();
-    renderLibraryGrid();
-  }
-}
-
-async function loadBookmarks(user) {
-  bookmarkedIds = new Set();
-  if (user) {
-    try {
-      const snap = await getDocs(collection(db, 'users', user.uid, 'bookmarks'));
-      bookmarkedIds = new Set(snap.docs.map(d => d.id));
-    } catch (err) {
-      console.error('Could not load bookmarks (check Firestore rules for users/{uid}/bookmarks):', err);
-    }
-  }
-  if (isBookmarksPage) renderFilterChips();
-  renderLibraryGrid();
 }
 
 // ============================================================
@@ -997,200 +845,5 @@ window.addEventListener('DOMContentLoaded', () => {
 // community.html — post form submit handler not yet built (deferred)
 // bookmarks.html — depends on Auth, not yet built (deferred)
 
-// ============================================================
-// AUTH — Google, email/password login + signup, auth-aware UI
-// ============================================================
-// Every block is guarded so it no-ops on pages without those elements.
-
-function showAuthError(message) {
-  const el = document.getElementById('auth-error');
-  if (el) el.textContent = message || '';
-  else if (message) alert(message);
-}
-
-function friendlyAuthError(err) {
-  switch (err?.code) {
-    case 'auth/email-already-in-use': return 'An account with that email already exists. Try logging in instead.';
-    case 'auth/invalid-email': return "That email address doesn't look right.";
-    case 'auth/weak-password': return 'Password must be at least 6 characters.';
-    case 'auth/invalid-credential':
-    case 'auth/user-not-found':
-    case 'auth/wrong-password': return 'Incorrect email or password.';
-    case 'auth/too-many-requests': return 'Too many attempts. Please wait a moment and try again.';
-    case 'auth/popup-closed-by-user':
-    case 'auth/cancelled-popup-request': return ''; // user closed the popup -- not an error
-    default: return 'Something went wrong. Please try again.';
-  }
-}
-
-// merge:true so a returning user's existing data is never overwritten.
-async function saveUserDoc(user, extra = {}) {
-  try {
-    await setDoc(doc(db, 'users', user.uid), {
-      email: user.email || null,
-      displayName: user.displayName || null,
-      ...extra
-    }, { merge: true });
-  } catch (err) {
-    console.error('Could not save user profile document:', err);
-  }
-}
-
-// Google sign-in (login.html + signup.html)
-const googleButton = document.getElementById('google-signup-button');
-if (googleButton) {
-  googleButton.addEventListener('click', async () => {
-    showAuthError('');
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await saveUserDoc(result.user);
-      window.location.href = 'index.html';
-    } catch (err) {
-      console.error('Google sign-in error:', err);
-      showAuthError(friendlyAuthError(err));
-    }
-  });
-}
-
-// Email/password login (login.html)
-const loginForm = document.getElementById('login-form');
-if (loginForm) {
-  loginForm.addEventListener('submit', async (e) => {
-    // FIX: with no handler the form submitted as a GET and put the email
-    // AND password in the page URL.
-    e.preventDefault();
-    showAuthError('');
-    const emailValue = document.getElementById('email').value.trim();
-    const passwordValue = document.getElementById('password').value;
-    try {
-      await signInWithEmailAndPassword(auth, emailValue, passwordValue);
-      window.location.href = 'index.html';
-    } catch (err) {
-      console.error('Login error:', err);
-      showAuthError(friendlyAuthError(err));
-    }
-  });
-}
-
-// Email/password signup (signup.html) -- two steps: name, then credentials
-const signupForm = document.getElementById('signup-form');
-if (signupForm) {
-  const fnameInput = document.getElementById('fname');
-  const lnameInput = document.getElementById('lname');
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const confirmInput = document.getElementById('confirm-password');
-  const nextBtn = document.getElementById('next');
-  const signUpBtn = document.getElementById('sign-up');
-
-  // FIX: the old code hid/showed the <input> elements, but the labels and
-  // wrapper divs (#fname-group, #email-group, ...) are what carry the
-  // .hidden class, so the second step never appeared and Confirm
-  // Password was never shown. Toggle the group wrappers instead.
-  const nameGroups = ['fname-group', 'lname-group'].map(id => document.getElementById(id));
-  const credGroups = ['email-group', 'password-group', 'confirm-password-group'].map(id => document.getElementById(id));
-
-  nextBtn.addEventListener('click', () => {
-    showAuthError('');
-    if (!fnameInput.value.trim() || !lnameInput.value.trim()) {
-      showAuthError('Please enter your first and last name.');
-      return;
-    }
-    nameGroups.forEach(g => g.classList.add('hidden'));
-    credGroups.forEach(g => g.classList.remove('hidden'));
-    nextBtn.classList.add('hidden');
-    signUpBtn.classList.remove('hidden');
-  });
-
-  signupForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    showAuthError('');
-
-    if (passwordInput.value !== confirmInput.value) {
-      showAuthError("Passwords don't match.");
-      return;
-    }
-
-    const firstName = fnameInput.value.trim();
-    const lastName = lnameInput.value.trim();
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
-      await updateProfile(cred.user, { displayName: `${firstName} ${lastName}` });
-      await saveUserDoc(cred.user, {
-        displayName: `${firstName} ${lastName}`,
-        firstName,
-        lastName,
-        createdAt: serverTimestamp()
-      });
-      window.location.href = 'index.html';
-    } catch (err) {
-      console.error('Signup error:', err);
-      showAuthError(friendlyAuthError(err));
-    }
-  });
-}
-
-// ============================================================
-// AUTH-AWARE UI — nav links, logout, profile page, bookmarks
-// ============================================================
-async function logOut() {
-  try {
-    await signOut(auth);
-    window.location.href = 'index.html';
-  } catch (err) {
-    console.error('Logout error:', err);
-  }
-}
-
-// Adds/removes a "Log Out" link at the end of the nav on every page, so
-// no page's HTML needs editing.
-function syncNavLogout(user) {
-  const nav = document.querySelector('.navigation');
-  if (!nav) return;
-  let logoutLink = document.getElementById('nav-logout');
-  if (user && !logoutLink) {
-    logoutLink = document.createElement('a');
-    logoutLink.id = 'nav-logout';
-    logoutLink.className = 'nav-logout';
-    logoutLink.href = '#';
-    logoutLink.textContent = 'Log Out';
-    logoutLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      logOut();
-    });
-    nav.appendChild(logoutLink);
-  } else if (!user && logoutLink) {
-    logoutLink.remove();
-  }
-}
-
-onAuthStateChanged(auth, (user) => {
-  currentUser = user;
-  authChecked = true;
-
-  // Hide Login / Sign Up when signed in, show Log Out instead.
-  document.querySelectorAll('a.login-button, a.signup-button').forEach(link => {
-    link.classList.toggle('hidden', !!user);
-  });
-  syncNavLogout(user);
-
-  // profile.html -- previously both panels stayed hidden forever.
-  const profileInfo = document.getElementById('profile-info');
-  const profileLoggedOut = document.getElementById('profile-logged-out');
-  if (profileInfo && profileLoggedOut) {
-    profileInfo.classList.toggle('hidden', !user);
-    profileLoggedOut.classList.toggle('hidden', !!user);
-    if (user) {
-      document.getElementById('profile-name').textContent = user.displayName || 'SyncStep dancer';
-      document.getElementById('profile-email').textContent = user.email || '';
-    }
-  }
-
-  // library.html / bookmarks.html -- load this user's bookmarks and redraw.
-  if (libraryGrid) loadBookmarks(user);
-});
-
-const logoutButton = document.getElementById('logout-button');
-if (logoutButton) {
-  logoutButton.addEventListener('click', logOut);
-}
+// Auth (login/signup/Google), bookmarks, community, profile, admin writes and
+// practice scoring now live in app.js (imported at the top of this file).

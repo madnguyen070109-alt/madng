@@ -3,96 +3,99 @@
   <head>
     <title>SyncStep</title>
     <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+	  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- link the webpage's stylesheet -->
-    <link rel="stylesheet" href="/practice.css" />
-    <link rel="stylesheet" href="/general-style.css" />
+	  <!-- link the webpage's stylesheet -->
+	  <link rel="stylesheet" href="/practice.css" />
+      <link rel="stylesheet" href="/general-style.css" />
 
-    <!-- YouTube IFrame Player API — loads async, calls window.onYouTubeIframeAPIReady when ready -->
-    <script src="https://www.youtube.com/iframe_api"></script>
+	  <!-- YouTube IFrame Player API — loads async, calls window.onYouTubeIframeAPIReady when ready -->
+	  <script src="https://www.youtube.com/iframe_api"></script>
 
-    <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
-    <script type="module" src="/firebase-init.js"></script>
+	  <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
+	  <script type="module" src="/firebase-init.js"></script>
 
-    <!-- type="module" so MediaPipe's import syntax works -->
-    <script type="module" src="/script.js" defer></script>
-  </head>
-  <body>
-    <header class="top-bar">
-      <a href="index.html">
-        <img src="assets/Firefly (1).png" alt="SyncStep Logo" class="logo">
-      </a>
-      <div class="navRect">
-        <div class="navigation">
-          <a href="index.html">
-            <img src="assets/home.png" alt="Home" class="home">
-          </a>
-          <a class="active" href="practice.html">Practice</a>
-          <a href="library.html">Library</a>
-          <a href="community.html">Community</a>
-          <a href="bookmarks.html">Bookmarks</a>
-          <a href="profile.html">Profile</a>
-          <a class="login-button" href="login.html">Login</a>
-        </div>
-      </div>
-    </header>
-    <hr>
-    <main class="practice-stage">
-      <!-- Left: YouTube reference video with synced skeleton overlay on top -->
-      <div class="video-column">
-        <div class="video-wrap" id="video-wrap">
-          <div id="yt-player"></div>
-          <canvas id="reference-overlay"></canvas>
-        </div>
-      </div>
+	  <!-- link the webpage's JavaScript file (type="module" so MediaPipe's import syntax works) -->
+	  <script type="module" src="/script.js" defer></script>
 
-      <!-- Right: user's webcam with live MediaPipe skeleton overlay -->
-      <div class="webcam-column">
-        <div class="webcam-wrap" id="webcam-wrap">
-          <video id="webcam-feed" autoplay playsinline muted></video>
-          <canvas id="live-overlay"></canvas>
-        </div>
-        <div class="camera-buttons-row">
-          <button type="button" id="start-camera-btn" class="button">Start Camera</button>
-          <button type="button" id="stop-camera-btn" class="hidden">Stop Camera</button>
-          <!-- FIX: was class="button disabled" (no such state) -- now truly disabled until recording is built -->
-          <button type="button" id="record" class="button" disabled>Record Session</button>
-        </div>
-        <div class="score-rect">
-          <p>SCORE</p>
-        </div>
-      </div>
-    </main>
+    </head>
+    <body>
+        <header class="top-bar">
+            <a href="index.html">
+                <img src="assets/Firefly (1).png" alt="SyncStep Logo" class="logo">
+            </a>
+            <div class="navRect">    
+                <div class="navigation">
+                    <a href="index.html">
+                        <img src="assets/home.png" alt="Home" class="home">
+                    </a>
+                    <a class="active" href="practice.html">Practice</a>
+                    <a href="library.html">Library</a>
+                    <a href="community.html">Community</a>
+                    <a href="bookmarks.html">Bookmarks</a>
+                    <a href="profile.html">Profile</a>
+                    <a class="login-button" href="login.html">Login</a>
+                </div>
+            </div>
+        </header>
+        <hr>
+        <main class="practice-stage">
+            <!-- Left: YouTube reference video with synced skeleton overlay on top -->
+            <div class="video-column">
+                <div class="video-wrap" id="video-wrap">
+                    <div id="yt-player"></div>
+                    <canvas id="reference-overlay"></canvas>
+                </div>
+            </div>
 
-    <!-- Persistent control row: speed / loop / mirror / phantom / view.
-         The ids, classes and data attributes below are what script.js hooks into. -->
-    <div class="control-grid">
-      <div class="control-item">
-        <h4>Playback Speed</h4>
-        <div>
-          <button type="button" class="oval-button speed-btn" data-speed="0.25">0.25x</button>
-          <button type="button" class="oval-button speed-btn" data-speed="0.5">0.5x</button>
-          <button type="button" class="oval-button speed-btn" data-speed="0.75">0.75x</button>
-          <button type="button" class="oval-button speed-btn active" data-speed="1">1x</button>
+                <!-- Right: user's webcam with live MediaPipe skeleton overlay -->
+            <div class="webcam-column">
+                <div class="webcam-wrap" id="webcam-wrap">
+                    <video id="webcam-feed" autoplay playsinline muted></video>
+                    <canvas id="live-overlay"></canvas>
+                </div>
+                <div class="camera-buttons-row">
+                    <button id="start-camera-btn" class="button">Start Camera</button>
+                    <button id="stop-camera-btn" class="hidden">Stop Camera</button>
+                    <button id="record" class="button">Record Session</button>
+                </div>
+                <div class="score-rect">
+                    <div class="score-body">
+                        <p class="score-label">SCORE</p>
+                        <div id="score-value">--</div>
+                        <p id="score-detail">Start your camera, then press play.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Persistent control row: speed / loop / mirror / phantom / view -->
+        <div class="control-grid">
+            <div class="control-item">
+                <h4>Playback Speed</h4>
+                <div>
+                    <button type="button" class="oval-button speed-btn" data-speed="0.25">0.25x</button>
+                    <button type="button" class="oval-button speed-btn" data-speed="0.5">0.5x</button>
+                    <button type="button" class="oval-button speed-btn" data-speed="0.75">0.75x</button>
+                    <button type="button" class="oval-button speed-btn active" data-speed="1">1x</button>
+                </div>
+            </div>
+            <div class="control-item">
+                <h4>Loop</h4>
+                <div id="loop-pills">
+                    <button type="button" class="oval-button loop-pill active" data-loop-off>Off</button>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="control-item">
-        <h4>Loop</h4>
-        <div id="loop-pills">
-          <button type="button" class="oval-button loop-pill active" data-loop-off>Off</button>
+        <div class="control-row-extra">
+            <button type="button" id="mirror-btn" class="control-button">Mirror</button>
+            <button type="button" id="phantom-btn" class="control-button">Phantom Overlay</button>
+            <select name="view" id="view">
+                <option value="side-by-side">Side by Side</option>
+                <option value="reference-only">Reference Only</option>
+                <option value="webcam-only">Webcam Only</option>
+            </select>
         </div>
-      </div>
-    </div>
-    <div class="control-row">
-      <button type="button" id="mirror-btn" class="control-button">Mirror</button>
-      <button type="button" id="phantom-btn" class="control-button">Phantom Overlay</button>
-      <select name="view" id="view">
-        <option value="side-by-side">Side by Side</option>
-        <option value="reference-only">Reference Only</option>
-        <option value="webcam-only">Webcam Only</option>
-      </select>
-    </div>
-  </body>
+	</body>
 </html>

@@ -1,15 +1,35 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /dances/{danceId} {
-      // Allow anyone to read the dances collection
-      allow read: if true;
-      // Restrict writes to authenticated users or specific logic
-      allow write: if request.auth != null;
+
+    // Paste YOUR uid here (Firebase console -> Authentication -> Users -> User UID)
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'PASTE_ADMIN_UID_HERE';
     }
+
+    // Dances: public read, admin-only write
+    match /dances/{danceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Each user owns their profile doc, scores, and bookmarks
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+      match /{sub=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // Community feed: public read, signed-in create as yourself, delete your own
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.caption is string
+                    && request.resource.data.caption.size() <= 500;
+      allow delete: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if false;
     }
   }
 }

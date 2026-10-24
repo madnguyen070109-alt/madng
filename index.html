@@ -3,19 +3,20 @@
     <head>
         <title>SyncStep</title>
         <meta charset="utf-8"/>
-        <!-- FIX: was <meta http-eqiv=""X-UA-Compatible" content="IE-edge"/> (typo + broken quotes) -->
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        <!-- link the webpage's stylesheet -->
+	    <!-- link the webpage's stylesheet -->
         <link rel="stylesheet" href="/index.css" />
         <link rel="stylesheet" href="/general-style.css" />
 
-        <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
-        <script type="module" src="/firebase-init.js"></script>
+	    <!-- link the webpage's JavaScript file -->
 
-        <!-- type="module" so MediaPipe's import syntax works -->
-        <script type="module" src="/script.js" defer></script>
+	  <!-- Firebase (Auth, Firestore, Storage) — shared config, imported by script.js -->
+	  <script type="module" src="/firebase-init.js"></script>
+
+	  <!-- link the webpage's JavaScript file (type="module" so MediaPipe's import syntax works) -->
+	  <script type="module" src="/script.js" defer></script>
     </head>
     <body>
         <header class="top-bar">
@@ -25,9 +26,7 @@
             <div class="navRect">
                 <div class="navigation">
                     <a href="index.html">
-                        <!-- FIX: was "assets/Home (2).png"; every other page uses assets/home.png,
-                             and Firebase Hosting file names are case-sensitive -->
-                        <img src="assets/home.png" alt="Home" class="home">
+                        <img src="assets/Home (2).png" alt="Home" class="home">
                     </a>
                     <a href="practice.html">Practice</a>
                     <a href="library.html">Library</a>
@@ -35,7 +34,7 @@
                     <a href="bookmarks.html">Bookmarks</a>
                     <a href="profile.html">Profile</a>
                     <a id="login" class="login-button" href="login.html">Login</a>
-                    <a id="signup" class="signup-button" href="signup.html">Sign Up</a>
+                    <a id="signup" class="login-button" href="signup.html">Sign Up</a>
                 </div>
                 
             </div>

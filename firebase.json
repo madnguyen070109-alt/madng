@@ -10,7 +10,21 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.py",
+      "**/*_keypoints*.json",
+      "cors.json",
+      "firestore.rules",
+      "storage.rules",
+      "README.md"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" }
+        ]
+      }
     ]
   },
   "storage": {
