@@ -27,8 +27,9 @@ const MEDIAPIPE_VERSION = "0.10.14";
 // All non-practice features (auth, bookmarks, community, profile, admin, scoring)
 import "./app.js";
 
-import { db } from "/firebase-init.js";
+import { db, storage } from "/firebase-init.js";
 import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { ref as storageRef, getDownloadURL, listAll } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js";
 // ---- Shared state -------------------------------------------------
 let poseLandmarker;            // MediaPipe Pose Landmarker instance
 let skeletonData = null;       // reference skeleton JSON for the current member
@@ -232,30 +233,113 @@ function setSkeletonStatus(msg, bad = false) {
   el.classList.toggle('bad', bad);
 }
 
+const slugify = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'member';
+
+// Returns a browser-fetchable https URL for the member's skeleton file.
+//  1. gs:// paths stored in Firestore are converted via Storage
+//  2. https URLs are used as-is
+//  3. no URL stored -> look in Storage under skeletons/<danceId>/
+async function resolveSkeletonUrl(member) {
+  if (!member) return null;
+
+  if (member.skeletonUrl) {
+    if (/^gs:\/\//.test(member.skeletonUrl)) {
+      try {
+        return await getDownloadURL(storageRef(storage, member.skeletonUrl));
+      } catch (err) {
+        console.warn('Could not resolve gs:// skeleton URL:', err);
+      }
+    } else {
+      return member.skeletonUrl;
+    }
+  }
+
+  const danceId = new URLSearchParams(location.search).get('dance');
+  const base = slugify(member.Name);
+
+  try {
+    return await getDownloadURL(storageRef(storage, `skeletons/${danceId}/${base}.json`));
+  } catch { /* not at the conventional path, try listing */ }
+
+  try {
+    const { items } = await listAll(storageRef(storage, `skeletons/${danceId}`));
+    const hit = items.find(i => slugify(i.name.replace(/\.json$/i, '')).includes(base));
+    if (hit) return await getDownloadURL(hit);
+  } catch (err) {
+    console.warn('Storage lookup for skeleton failed:', err);
+  }
+  return null;
+}
+
+// Accepts [{x,y,visibility}] or [[x,y,z,vis]]; converts pixel coords to 0..1.
+// Null/missing landmarks are kept as null so indices stay aligned.
+function normalizeJoints(raw, W, H) {
+  if (!Array.isArray(raw) || !raw.length) return null;
+  const pts = raw.map(p => {
+    if (!p) return null;
+    return Array.isArray(p)
+      ? { x: p[0], y: p[1], z: p[2], visibility: p[3] }
+      : { x: p.x, y: p.y, z: p.z, visibility: p.visibility ?? p.v ?? p.score };
+  });
+  const real = pts.filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (!real.length) return null;
+  const maxVal = Math.max(...real.map(p => Math.max(p.x, p.y)));
+  if (maxVal > 2) {
+    if (!W || !H) { console.warn('Skeleton looks like pixel coords but file has no width/height'); return null; }
+    real.forEach(p => { p.x /= W; p.y /= H; });
+  }
+  return pts;
+}
+
 async function loadSkeletonData(member) {
-  const skeletonUrl = member?.skeletonUrl;
+  const skeletonUrl = await resolveSkeletonUrl(member);
   if (!skeletonUrl) {
-    setSkeletonStatus('Ghost outline unavailable: this member has no skeleton file in the library.', true);
+    setSkeletonStatus(
+      member
+        ? 'Ghost outline unavailable: no skeleton file found in the library or in Storage for this member.'
+        : "Ghost outline unavailable: this video isn't listed under any member of this dance.",
+      true
+    );
     return;
   }
   try {
     const res = await fetch(skeletonUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     let data = await res.json();
-    if (!Array.isArray(data)) data = data.frames || data.keyframes || data.skeleton || [];
+    let meta = {};
+    if (!Array.isArray(data)) {
+      meta = data;
+      data = data.frames || data.keyframes || data.skeleton || [];
+    }
     if (!data.length) throw new Error('file has no frames');
+
+    // Frames may store points as joints / landmarks / keypoints / pose;
+    // everything downstream (drawing + scoring) reads `.joints`.
+    const W = meta.width || meta.frame_width || meta.videoWidth;
+    const H = meta.height || meta.frame_height || meta.videoHeight;
+    data = data
+      .map(f => ({
+        t: f.t ?? f.time ?? f.timestamp ?? 0,
+        joints: normalizeJoints(f.joints || f.landmarks || f.keypoints || f.pose, W, H)
+      }))
+      .filter(f => f.joints);
+    if (!data.length) throw new Error('no usable joints in file');
 
     // If timestamps look like milliseconds, convert to seconds
     const duration = ytPlayer?.getDuration?.() || 0;
     const lastT = data[data.length - 1].t;
-    if (duration && lastT > duration * 20) data = data.map(f => ({ ...f, t: f.t / 1000 }));
+    if ((duration && lastT > duration * 20) || (!duration && lastT > 10000)) {
+      data = data.map(f => ({ ...f, t: f.t / 1000 }));
+    }
 
     data.sort((a, b) => a.t - b.t);
     skeletonData = data;
     setSkeletonStatus('');
+    sizeOverlayToPlayer();
+    startSyncLoop(() => ytPlayer.getCurrentTime()); // don't wait for a player state change
   } catch (err) {
     console.error('Skeleton load failed:', err);
-    setSkeletonStatus('Ghost outline failed to load (' + err.message + '). If this says "Failed to fetch", the Storage CORS settings still need to be applied.', true);
+    setSkeletonStatus('Ghost outline failed to load (' + err.message + '). If this says "Failed to fetch", check the Storage CORS settings and that the URL is an https download URL.', true);
   }
 }
 
@@ -503,6 +587,7 @@ function drawSkeleton(canvas, landmarks, { opacity = 1, color = null, clear = tr
   // fingertip/thumb positions read as distinct points rather than
   // disappearing into the glow.
   landmarks.forEach((point, idx) => {
+    if (!point) return;
     const isHandPoint = HAND_POINT_INDICES.has(idx);
     ctx.beginPath();
     ctx.fillStyle = strokeColor;
