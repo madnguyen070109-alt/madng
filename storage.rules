@@ -2,22 +2,33 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Skeleton JSONs: admin upload only (paste the same admin uid as firestore.rules)
+    // Centralized Helper to enforce matching admin account setup
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'madisonnguyen430@gmail.com';
+    }
+
+    // 1. Skeleton JSONs: Admin write deployments only
     match /skeletons/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == 'PASTE_ADMIN_UID_HERE';
+      allow write: if isAdmin();
     }
 
-    // Community photos: only into your own folder, images under 5 MB
+    // 2. Community photos: Users manage files inside their specific UID folder
     match /posts/{uid}/{file} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == uid
+      
+      // Asset uploads require rigorous payload profiling matching code requirements
+      allow create, update: if request.auth != null 
+                   && request.auth.uid == uid
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
+                   
+      // File removal operations ignore content sizing payloads to mitigate object null pointers
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Everything else (existing uploads): public read, no writes
-    match /{allPaths=**} {
+    // 3. Fallback Catch: Global view availability, write lock down
+    match /{allOtherPaths=**} {
       allow read: if true;
       allow write: if false;
     }

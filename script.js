@@ -44,42 +44,16 @@ const webcamVideoEl = document.getElementById('webcam-feed');
 const startCameraBtn = document.getElementById('start-camera-btn');
 const stopCameraBtn = document.getElementById('stop-camera-btn');
 
-// Elements used by sizeScoreRectToVideo() — score-rect's height tracking
+// Elements used by sizeScoreRectToVideo()
 const scoreRect = document.querySelector('.score-rect');
 const videoWrap = document.getElementById('video-wrap');
 
-// Matches .score-rect's height to .video-wrap's actual rendered height,
-// so it lines up with the bottom of the YouTube video regardless of
-// viewport size.
+// Both practice boxes are 9:16 and the same height now, so the score box
+// no longer has to be stretched to line up with the video. Kept as a
+// function (and still called from the places below) so those call sites
+// don't need to change — it just clears any leftover inline height.
 function sizeScoreRectToVideo() {
-  if (!scoreRect || !videoWrap) return;
-  if (window.innerWidth <= 900) { scoreRect.style.height = ''; return; } // stacked layout
-
-  const webcamWrap = document.getElementById('webcam-wrap');
-  const recordBtn = document.getElementById('record');
-  // Whichever of start/stop is currently visible drives the used-height
-  // calc; the hidden one contributes 0 since .hidden sets display:none.
-  const activeCameraBtn = (startCameraBtn && !startCameraBtn.classList.contains('hidden'))
-    ? startCameraBtn
-    : stopCameraBtn;
-
-  const videoHeight = videoWrap.getBoundingClientRect().height;
-  if (!videoHeight) { scoreRect.style.height = '160px'; return; } // video column hidden (Webcam Only)
-
-  // Subtract the height everything above score-rect in the column already
-  // takes up (webcam box + buttons + their margins), so score-rect fills
-  // exactly what's left rather than pushing the column taller than the video.
-  const usedHeight = [webcamWrap, activeCameraBtn, recordBtn]
-    .filter(Boolean)
-    .reduce((sum, el) => {
-      const style = getComputedStyle(el);
-      const marginTop = parseFloat(style.marginTop) || 0;
-      const marginBottom = parseFloat(style.marginBottom) || 0;
-      return sum + el.getBoundingClientRect().height + marginTop + marginBottom;
-    }, 0);
-
-  const remaining = videoHeight - usedHeight;
-  scoreRect.style.height = Math.max(remaining, 0) + 'px';
+  if (scoreRect) scoreRect.style.height = '';
 }
 
 // ============================================================
@@ -404,7 +378,16 @@ async function initPoseLandmarker() {
 // rather than requested automatically on page load.
 async function startCamera() {
   try {
-    webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    // Ask for a portrait 9:16 stream (phones honor this). Most desktop
+    // webcams are landscape and ignore it -- coverMap() below handles that.
+    webcamStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 720 },
+        height: { ideal: 1280 },
+        aspectRatio: { ideal: 9 / 16 }
+      }
+    });
     webcamVideoEl.srcObject = webcamStream;
     await webcamVideoEl.play();
 
@@ -422,8 +405,6 @@ async function startCamera() {
     stopCameraBtn.classList.remove('hidden');
     stopCameraBtn.classList.add('button');
 
-    // Button swap can change the column's layout height slightly —
-    // recalc so score-rect stays aligned with the video.
     sizeScoreRectToVideo();
   } catch (err) {
     // TODO: swap for the friendly retry-UI error message from the spec
@@ -453,9 +434,23 @@ function stopCamera() {
   startCameraBtn.classList.add('button');
   startCameraBtn.classList.remove('hidden');
 
-  // Button swap can change the column's layout height slightly —
-  // recalc so score-rect stays aligned with the video.
   sizeScoreRectToVideo();
+}
+
+// Maps landmarks from the raw webcam frame into the 9:16 box. The <video>
+// uses object-fit: cover, so a landscape webcam has its left/right edges
+// cropped (a very tall one would be cropped top/bottom). MediaPipe's
+// landmarks are normalized to the UNCROPPED frame, so without this the
+// drawn skeleton drifts away from the person. Scoring still receives the
+// raw landmarks (it uses the raw frame's aspect ratio instead).
+function coverMap(landmarks) {
+  if (!landmarks || !webcamVideoEl.videoWidth || !webcamVideoEl.videoHeight) return landmarks;
+  const va = webcamVideoEl.videoWidth / webcamVideoEl.videoHeight;
+  const boxA = liveCanvas.width / liveCanvas.height;
+  if (!boxA || Math.abs(va - boxA) < 0.01) return landmarks;
+  return landmarks.map(p => !p ? p : va > boxA
+    ? { ...p, x: (p.x - 0.5) * (va / boxA) + 0.5 }
+    : { ...p, y: (p.y - 0.5) * (boxA / va) + 0.5 });
 }
 
 // NOTE: previously this bailed out permanently if poseLandmarker wasn't
@@ -477,7 +472,9 @@ function detectWebcamLoop() {
   // webcam feed at the current YouTube playback time, so the target
   // pose can be mimicked directly instead of glancing over at the
   // separate reference video. Drawn first/dimmer so the user's own
-  // tracked skeleton reads clearly on top of it.
+  // tracked skeleton reads clearly on top of it. Reference joints are
+  // normalized to a 9:16 frame and the live box is 9:16 too, so they
+  // map straight across with no remapping.
   if (phantomEnabled && ytPlayer && skeletonData) {
     const phantomFrame = findClosestKeyframe(ytPlayer.getCurrentTime());
     if (phantomFrame?.joints) {
@@ -492,7 +489,7 @@ function detectWebcamLoop() {
     // Mint when Phantom Overlay is on, so the live-tracked skeleton
     // reads as visually distinct from the white reference ghost drawn
     // underneath it (Section 26: Mint = positive feedback).
-    drawSkeleton(liveCanvas, landmarks, {
+    drawSkeleton(liveCanvas, coverMap(landmarks), {
       opacity: 1,
       color: phantomEnabled ? 'rgba(63, 174, 138, 0.95)' : null,
       clear: false
@@ -738,8 +735,6 @@ window.addEventListener('DOMContentLoaded', () => {
     stopCameraBtn.addEventListener('click', stopCamera);
   }
 
-  // Initial pass in case video-wrap already has its aspect-ratio height
-  // on load.
   sizeScoreRectToVideo();
   sizeOverlayToPlayer();
 });

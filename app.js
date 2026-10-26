@@ -613,7 +613,10 @@ if ($("score-value")) {
 }
 
 function initScoring() {
-  const AR = 16 / 9;                       // both video boxes are 16:9
+  // Landmarks are normalized to each source's own frame, so angles must be
+  // computed with that frame's width/height ratio. Reference videos are
+  // portrait 9:16; the live webcam's ratio is read from the <video> element.
+  const REF_AR = 9 / 16;
   const TOLERANCE_DEG = 50;                // angle error that scores 0 for that joint
   const MAX_TIME_GAP = 0.5;                // ignore reference frames farther than this from "now"
   // [a, vertex, c] landmark indices (MediaPipe Pose)
@@ -635,20 +638,21 @@ function initScoring() {
   const ok = (p) => p && (p.visibility === undefined || p.visibility > 0.5);
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-  function angle(a, b, c) {
-    const v1x = (a.x - b.x) * AR, v1y = a.y - b.y;
-    const v2x = (c.x - b.x) * AR, v2y = c.y - b.y;
+  // `ar` = width / height of the frame these normalized coords came from
+  function angle(a, b, c, ar) {
+    const v1x = (a.x - b.x) * ar, v1y = a.y - b.y;
+    const v2x = (c.x - b.x) * ar, v2y = c.y - b.y;
     const m = Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y);
     if (!m) return null;
     return Math.acos(clamp((v1x * v2x + v1y * v2y) / m, -1, 1)) * 180 / Math.PI;
   }
 
-  function frameScore(live, ref) {
+  function frameScore(live, ref, liveAR) {
     let total = 0, used = 0;
     for (const [i, j, k] of ANGLES) {
       if (!ok(live[i]) || !ok(live[j]) || !ok(live[k]) || !ok(ref[i]) || !ok(ref[j]) || !ok(ref[k])) continue;
-      const a = angle(live[i], live[j], live[k]);
-      const b = angle(ref[i], ref[j], ref[k]);
+      const a = angle(live[i], live[j], live[k], liveAR);
+      const b = angle(ref[i], ref[j], ref[k], REF_AR);
       if (a === null || b === null) continue;
       total += Math.max(0, 1 - Math.abs(a - b) / TOLERANCE_DEG);
       used++;
@@ -678,7 +682,9 @@ function initScoring() {
     const kf = api.getKeyframe(t);
     if (!kf?.joints || Math.abs(kf.t - t) > MAX_TIME_GAP) return;
 
-    const s = frameScore(live, kf.joints);
+    const cam = $("webcam-feed");
+    const liveAR = (cam?.videoWidth && cam?.videoHeight) ? cam.videoWidth / cam.videoHeight : 9 / 16;
+    const s = frameScore(live, kf.joints, liveAR);
     if (s === null) return;
     smooth = smooth === null ? s : smooth * 0.85 + s * 0.15;
     if (recording) { sum += s; count++; }

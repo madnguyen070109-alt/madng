@@ -9,19 +9,22 @@
   --rect-gray: #E9E9E6;
 }
 .practice-stage {
+    --stage-h: min(78vh, 900px); /* height of both 9:16 boxes; width derives from it */
     display: flex;
+    justify-content: center;
+    align-items: flex-start;
     gap: 24px;
     padding: 20px;
 }
 
-.video-column {
-    flex: 0 0 60vw;
-    max-width: 60vw;
-}
+.video-column,
 .webcam-column {
-    flex: 1 1 auto; /* takes up the remaining ~25% */
+    flex: 0 0 auto;
+    width: calc(var(--stage-h) * 9 / 16);
+    max-width: 100%;
+    min-width: 0;
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
 }
 
 /* Shared positioning context so the overlay canvas can sit exactly on
@@ -30,7 +33,7 @@
 .webcam-wrap {
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 9 / 16; /* portrait: matches the reference videos and keypoint coordinates */
     background-color: var(--warm-white); /* Warm White, per Section 26 */
     border-radius: 8px;
     overflow: hidden;
@@ -139,15 +142,14 @@ p {
     gap: 0; /* the buttons already carry their own margin below */
     flex-shrink: 0;
 }
-/* Fills whatever vertical space is left in .webcam-column after
-   webcam-wrap + the button row, so its bottom lines up with the
-   bottom of the YouTube video — pure flexbox, no JS needed. */
+/* Score box sits under the webcam. Both 9:16 boxes are the same height,
+   so it no longer needs to be stretched to line up with the video. */
 .score-rect {
     width: 100%;
     background-color: var(--rect-gray);
     box-sizing: border-box;
-    flex: 1 1 auto;
-    min-height: 0; /* overrides browser's default min-height:auto on flex items, which was blocking growth */
+    flex: none;
+    min-height: 120px;
     display: flex;
 
     padding: 10px;

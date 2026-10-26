@@ -1,35 +1,47 @@
 rules_version = '2';
-service cloud.firestore {
+service firebase.firestore {
   match /databases/{database}/documents {
 
-    // Paste YOUR uid here (Firebase console -> Authentication -> Users -> User UID)
+    // Global Admin Account Validation Helper
     function isAdmin() {
-      return request.auth != null && request.auth.uid == 'PASTE_ADMIN_UID_HERE';
+      return request.auth != null && request.auth.token.email == 'madisonnguyen430@gmail.com';
     }
 
-    // Dances: public read, admin-only write
-    match /dances/{danceId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Each user owns their profile doc, scores, and bookmarks
+    // 1. Users Profile Map Rules
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-      match /{sub=**} {
+      allow read: if true;
+      // Allow users to bootstrap profile maps or keep them updated via merge transactions
+      allow write: if request.auth != null && request.auth.uid == uid;
+
+      // Nested Sub-collection: Dance bookmarks tracking list
+      match /bookmarks/{danceId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Nested Sub-collection: Performance training scoring tracking list
+      match /scores/{scoreId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
 
-    // Community feed: public read, signed-in create as yourself, delete your own
+    // 2. Dances Global Catalogue Rules
+    match /dances/{danceId} {
+      allow read: if true;
+      allow write: if isAdmin(); // Lock library mutations exclusively to Admin UI console
+    }
+
+    // 3. Community Feed Posting Board Rules
     match /posts/{postId} {
       allow read: if true;
-      allow create: if request.auth != null
+      
+      // Create requirements match structured object attributes
+      allow create: if request.auth != null 
                     && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.caption is string
-                    && request.resource.data.caption.size() <= 500;
-      allow delete: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
-      allow update: if false;
+                    && request.resource.data.authorName is string
+                    && request.resource.data.createdAt == request.time;
+      
+      // Update/Delete operations strictly verify true source creation authority
+      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
   }
 }
